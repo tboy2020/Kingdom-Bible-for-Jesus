@@ -501,7 +501,7 @@ function switchTab(name){
 
 // VOTD
 function initVOTD(){
-  votdIdx=Math.floor(Date.now()/86400000)%VERSES.length;
+  votdIdx=Math.floor(Math.random()*VERSES.length);
   renderVOTD();renderThemeQuick();
 }
 function refreshVOTD(){
