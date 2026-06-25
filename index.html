@@ -815,6 +815,26 @@ var audioAutoPlay = false;
 var audioSpeed = 1.0;
 var audioCurrent = null; // {type:'med'} or {type:'decl'}
 
+// Keep-alive: iOS/Safari pauses speechSynthesis when the screen locks or tab blurs.
+// This heartbeat resumes it so reading continues until the user presses pause.
+var speechKeepAlive = setInterval(function() {
+  if (!synth) return;
+  // Only nudge while we intend to be playing
+  if (audioAutoPlay || (currentUtt && synth.speaking)) {
+    if (synth.paused) {
+      try { synth.resume(); } catch(e) {}
+    }
+  }
+}, 5000);
+
+// Also resume immediately when the page becomes visible again
+document.addEventListener('visibilitychange', function() {
+  if (!synth) return;
+  if (!document.hidden && (audioAutoPlay) && synth.paused) {
+    try { synth.resume(); } catch(e) {}
+  }
+});
+
 function getBestVoice() {
   var voices = synth.getVoices();
   // Prefer enhanced English voices (iOS Siri voices)
@@ -831,6 +851,9 @@ function getBestVoice() {
   return voices[0] || null;
 }
 
+var currentUtt = null;
+var speakRetries = 0;
+
 function speak(text, onEnd, rate) {
   if (!synth) { if(onEnd) onEnd(); return; }
   synth.cancel();
@@ -840,9 +863,45 @@ function speak(text, onEnd, rate) {
   utt.volume = 1.0;
   var voice = getBestVoice();
   if (voice) utt.voice = voice;
-  utt.onend = onEnd || null;
-  utt.onerror = function() { if(onEnd) onEnd(); };
-  synth.speak(utt);
+
+  var finished = false;
+  utt.onend = function() {
+    if (finished) return;
+    finished = true;
+    speakRetries = 0;
+    if (onEnd) onEnd();
+  };
+  utt.onerror = function(e) {
+    if (finished) return;
+    // Do NOT auto-advance on error. Retry the SAME verse a few times.
+    // 'interrupted' and 'canceled' happen on normal cancel() — ignore those.
+    if (e && (e.error === 'interrupted' || e.error === 'canceled')) {
+      finished = true;
+      return;
+    }
+    if (speakRetries < 3) {
+      speakRetries++;
+      setTimeout(function() {
+        if (finished) return;
+        speak(text, onEnd, rate);
+      }, 350);
+    } else {
+      // Give up on this verse after retries — advance so we don't get stuck
+      finished = true;
+      speakRetries = 0;
+      if (onEnd) onEnd();
+    }
+  };
+
+  currentUtt = utt;
+  // iOS quirk: ensure voices are loaded before speaking
+  if (synth.getVoices().length === 0) {
+    setTimeout(function() {
+      if (!finished) synth.speak(utt);
+    }, 200);
+  } else {
+    synth.speak(utt);
+  }
 }
 
 function audioToggle() {
