@@ -965,9 +965,21 @@ function startMedAudio() {
   var v = VERSES[item.idx];
   var ref = v.b + ' ' + v.c + ':' + v.v;
   showAudioBar(ref);
-  // Read: reference then text
-  var spokenRef = v.b + ', chapter ' + v.c + ', verse ' + v.v;
-    speak(spokenRef + '. ' + v.t, function() {
+
+  // Announce the reference ONLY when starting a new chapter (or first verse).
+  // Otherwise just read the verse text and flow on.
+  var prevItem = medPos > 0 ? medQueue[medPos - 1] : null;
+  var prevVerse = (prevItem && prevItem.type === 'verse') ? VERSES[prevItem.idx] : null;
+  var newChapter = !prevVerse || prevVerse.b !== v.b || prevVerse.c !== v.c;
+
+  var toSpeak;
+  if (newChapter) {
+    toSpeak = v.b + ', chapter ' + v.c + '. ' + v.t;
+  } else {
+    toSpeak = v.t;
+  }
+
+  speak(toSpeak, function() {
     if (!audioAutoPlay) return;
     // Auto advance
     setTimeout(function() {
@@ -980,7 +992,7 @@ function startMedAudio() {
         audioStop();
         showToast('Reading complete');
       }
-    }, 800);
+    }, 500);
   });
 }
 
