@@ -1,7 +1,7 @@
 /* Kingdom Bible for Jesus — service worker (offline support)
    HTML: network-first (fresh when online, cached when offline).
    Assets (icons, Google Fonts): cache-first. */
-var CACHE = 'kingdom-bible-v1';
+var CACHE = 'kingdom-bible-v2';
 var SHELL = ['./', './index.html', './manifest.json',
              './icon-192.png', './icon-512.png', './icon-180.png'];
 

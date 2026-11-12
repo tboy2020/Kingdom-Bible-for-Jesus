@@ -993,10 +993,18 @@ function getBestVoice() {
 var currentUtt = null;
 var speakRetries = 0;
 
+// Read-aloud normalization: "1 Peter"->"First Peter", "118:24"->"118 verse 24", "4-6"->"4 to 6".
+function sayable(s){ return String(s==null?'':s)
+  .replace(/\b([123])\s+(Samuel|Kings|Chronicles|Corinthians|Thessalonians|Timothy|Peter|John)\b/g,function(m,d,b){return (d==='1'?'First':d==='2'?'Second':'Third')+' '+b;})
+  .replace(/(\d)\s*:\s*(\d)/g,'$1 verse $2')
+  .replace(/(\d)\s*[-–—]\s*(\d)/g,'$1 to $2')
+  .replace(/_{2,}/g,' , ')
+  .replace(/\s+([,.;:!?])/g,'$1').replace(/,\s*([.!?;:])/g,'$1').replace(/\s+/g,' ').trim(); }
+
 function speak(text, onEnd, rate) {
   if (!synth) { if(onEnd) onEnd(); return; }
   synth.cancel();
-  var utt = new SpeechSynthesisUtterance(text);
+  var utt = new SpeechSynthesisUtterance(sayable(text));
   utt.rate = rate || audioSpeed;
   utt.pitch = 1.0;
   utt.volume = 1.0;
